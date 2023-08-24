@@ -1,35 +1,41 @@
 import { emit } from "@tauri-apps/api/event";
+import { supabase } from "./supabaseClient";
 
-export async function getSearch(db, searchInput) {
-    const result = await db.select(
-        `SELECT * FROM notes WHERE note_text like '%${searchInput}%'`
-    );
-    return result;
+export async function getSearch(searchInput) {
+    const { data, error } = await supabase.from("notes").select().like("note_text", `%${searchInput}%`)
+    return data;
 }
 
-export async function addNoteDB(db, uuid, text) {
-    const result = await db.execute(
-        "INSERT into notes (note_id, note_text) VALUES ($1, $2);", 
-        [uuid, text]
-    )
-    return result;
+export async function addNoteDB() {    
+    const userID = (await supabase.auth.getUser()).data.user.id
+    const { data, error } = await supabase
+    .from('notes')
+    .insert([{user_id: userID}])
+    .select();
+
+    console.log(data)
+
+    return data;
 }
 
-export async function updateNoteDB(db, uuid, text) {
-    const result = await db.execute(
-        "UPDATE notes SET note_text = $2 WHERE note_id = $1;", 
-        [uuid, text]
-    );
+export async function updateNoteDB(uuid, text) {
+    
+    const { data, error } = await supabase
+    .from('notes')
+    .update({ note_text: text })
+    .eq("note_id", uuid)
+    .select()
+
     await emit("db", {message: "save"});
-    return result;
+    return data;
 }
 
-export async function removeNoteDB(db, uuid) {
-    const result = await db.execute(
-        "DELETE FROM notes WHERE note_id = $1;", 
-        [uuid]
-    )
-    return result;
+export async function removeNoteDB(uuid) {
+    
+    const { error } = await supabase
+    .from('notes')
+    .delete()
+    .eq("note_id", uuid)
 }
 
 

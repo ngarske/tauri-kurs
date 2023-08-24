@@ -7,11 +7,12 @@ import {
     sendNotification
 } from "@tauri-apps/api/notification"
 import { useLoaderData } from "react-router-dom";
-import Database from "tauri-plugin-sql-api";
 import { updateNoteDB } from "./functions/db";
 import { listen } from "@tauri-apps/api/event";
 import {save} from "@tauri-apps/api/dialog"
 import {writeTextFile} from "@tauri-apps/api/fs"
+import { supabase } from "./functions/supabaseClient";
+
 
 export async function loader({ params }){
     const noteID = params.noteID;
@@ -23,7 +24,6 @@ function Editor() {
     const [note, setNote] = useState("No text");
     const [isRendered, setRender] = useState(false);
     const [markdownHTML, setMarkdownHTML] = useState("");
-    const [db, setDB] = useState("");
     const [menuEventPayload, setEventPayload] = useState("");
 
     useEffect(() => {
@@ -69,10 +69,8 @@ function Editor() {
     }
 
     async function loadNoteFromDB() {
-        const loadedDB = await Database.load("sqlite:test.db")
-        const result = await loadedDB.select("SELECT * FROM notes WHERE note_id = $1", [noteUUID]);
-        setNote(result[0].note_text)
-        setDB(loadedDB);
+        const {data, error} = await supabase.from("notes").select().eq("note_id", noteUUID)
+        setNote(data[0].note_text)
       }
 
     async function renderMarkdown() {
@@ -111,7 +109,7 @@ function Editor() {
                         }
                     }}>Copy</button>
                     <button className="btn btn-sm join-item" onClick={async () => {
-                        await updateNoteDB(db, noteUUID, note)
+                        await updateNoteDB(noteUUID, note)
                     }}>Save</button>
                 </div>
             </div>
